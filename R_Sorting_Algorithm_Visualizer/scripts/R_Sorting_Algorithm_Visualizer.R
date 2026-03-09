@@ -98,12 +98,14 @@ insertion_sort_states <- function(arr) {
   states <- list()
   n <- length(arr)
   sorted <- c()
+  rel_sorted <- c()
   
   # ---- add state ----
-  add_state <- function(arr, comparing=NULL, sorted=NULL){
+  add_state <- function(arr, comparing=NULL, rel_sorted = NULL, sorted=NULL){
     states[[length(states)+1]] <<- list(
       arr = arr,
       comparing = comparing,
+      rel_sorted = rel_sorted,
       sorted = sorted
     )
   }
@@ -116,25 +118,27 @@ insertion_sort_states <- function(arr) {
     j <- i - 1
     
     # move to right until index gets bigger than key
-    add_state(arr, comparing=c(j,i), sorted=sorted)
+    add_state(arr, comparing=c(j,i),rel_sorted = rel_sorted, sorted=sorted)
     while (j > 0 && arr[j] > key) {
-      add_state(arr, comparing=c(j,j+1), sorted=sorted)
+      #add_state(arr, comparing=c(j,j+1), rel_sorted = rel_sorted,sorted=sorted)
       arr[j + 1] <- arr[j]
-      add_state(arr, comparing=c(j,j+1), sorted=sorted)
+      # add_state(arr, comparing=c(j,j+1),rel_sorted = rel_sorted, sorted=sorted)
       j <- j - 1
     }
     
     # swap key
     arr[j + 1] <- key
     # coloring sorted item green
-    sorted <- 1:i
-    add_state(arr, sorted=sorted)
+    rel_sorted <- 1:i
+    add_state(arr, rel_sorted = rel_sorted,sorted=sorted)
   }
-
+  sorted <- 1:i
+  add_state(arr, sorted=sorted)
   return (states)
 }
 
-# ---- Heap sort ----
+# ---- Heap sort ---- 
+# TODO fix to work with uneven array sizes
 adjust_heap <- function(arr, k, n, heap_env, sorted=NULL){
   
   left <- 2*k
@@ -207,8 +211,8 @@ heap_sort_states <- function(arr){
     
   }
   
-  sorted <- c(sorted,n)
-  add_state(arr, sorted=sorted)
+  # sorted <- c(sorted,n)
+  # add_state(arr, sorted=sorted)
   
   return(heap_env$states)
 }
@@ -301,7 +305,7 @@ server <- function(input, output, session){
     state <- if(!is.null(values$states)){
       values$states[[values$step]]
     } else {
-      list(arr = values$arr, comparing=NULL, sorted=NULL)
+      list(arr = values$arr, comparing=NULL, rel_sorted = NULL, sorted=NULL)
     }
     
     req(state$arr)
@@ -319,12 +323,16 @@ server <- function(input, output, session){
     if(!is.null(state$sorted)){
       df$type[df$index %in% state$sorted] <- "sorted"
     }
+    if(!is.null(state$rel_sorted)){
+      df$type[df$index %in% state$rel_sorted] <- "rel_sorted"
+    }
     
     ggplot(df, aes(index,value,fill=type)) +
       geom_col() +
       scale_fill_manual(values=c(
         normal="steelblue",
         comparing="red",
+        rel_sorted = "orange",
         sorted="green"
       )) +
       ylim(0,max(df$value)+1) +
